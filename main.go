@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"marnie_playground/pigeon/pigeon/pigeon"
+
+	"github.com/mappymappy/pigeon/pigeon/server"
 )
 
 func main() {
-	srv := pigeon.NewServer()
-	ctx := context.TODO()
-	//TODO:client mode & cli args..
+	// start chat server
+	srv := server.NewServer()
+	ctx := context.Background()
 	srv.Start(ctx)
 }

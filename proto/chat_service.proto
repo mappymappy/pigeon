@@ -9,12 +9,14 @@ service ChatService {
 }
 
 message SignInResponse {
+	string token = 1;
 }
 
 message SignOutResponse {
 }
 
 message SignInRequest {
+	string person = 1;
 }
 
 message SignOutRequest {
@@ -27,5 +29,4 @@ message ChatResponse {
 
 message ChatRequest {
 	string body = 1;
-	string person = 2;
 }

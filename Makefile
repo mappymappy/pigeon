@@ -5,10 +5,10 @@ build-server:
 run-server: build-server
 	./pigeon_server
 build-client:
-	go build -o ./pigeon_client ./client
+	go build -o ./pigeon_client ./pigeon/client
 run-client: build-client
 	./pigeon_client
 build-client%:
-	go build -o ./pigeon_client$* ./client
+	go build -o ./pigeon_client$* ./pigeon/client
 run-client%: build-client%
 	./pigeon_client$*

@@ -1,12 +1,14 @@
-package pigeon
+package server
 
 import (
 	"context"
 	"log"
+	"marnie_playground/pigeon/pigeon/pigeon/pigeon_const"
 	"net"
+	"os"
 
-	pb "marnie_playground/pigeon/pigeon/pb"
-	chat "marnie_playground/pigeon/pigeon/pigeon/application/service/chat"
+	pb "github.com/mappymappy/pigeon/pb"
+	chat "github.com/mappymappy/pigeon/pigeon/server/application/service/chat"
 
 	"google.golang.org/grpc"
 )
@@ -26,10 +28,10 @@ func (s *Server) Start(ctx context.Context) error {
 	defer cancel()
 	log.Print("start pigeon server...\n")
 	gsrv := grpc.NewServer()
-	service := chat.NewService(s.chatStream)
+	service := chat.NewService(s.chatStream, os.Getenv(pigeon_const.ServerSecureSalt))
 	pb.RegisterChatServiceServer(gsrv, service)
 	//TODO: move cli args
-	listenPort, err := net.Listen("tcp", ":19003")
+	listenPort, err := net.Listen("tcp", os.Getenv(pigeon_const.ServerPortEnvName))
 	if err != nil {
 		return err
 	}
@@ -38,16 +40,9 @@ func (s *Server) Start(ctx context.Context) error {
 		cancel()
 	}()
 	<-ctx.Done()
-	/*
-		//shutdown...
-		s.Broadcast <- chat.StreamResponse{
-			Timestamp: ptypes.TimestampNow(),
-			Event: &chat.StreamResponse_ServerShutdown{
-				&chat.StreamResponse_Shutdown{}}}
-		close(s.Broadcast)
-		ServerLogf(time.Now(), "shutting down")
-		gsrv.GracefulStop
-	*/
+	// shutdown
+	// 1.通知 (Message & Event)
+	// 2.graceful
 
 	return nil
 }
