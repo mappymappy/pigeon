@@ -28,9 +28,8 @@ func (s *Server) Start(ctx context.Context) error {
 	defer cancel()
 	log.Print("start pigeon server...\n")
 	gsrv := grpc.NewServer()
-	service := chat.NewService(s.chatStream, os.Getenv(pigeon_const.ServerSecureSalt))
+	service := chat.NewService(ctx, s.chatStream, os.Getenv(pigeon_const.ServerSecureSalt))
 	pb.RegisterChatServiceServer(gsrv, service)
-	//TODO: move cli args
 	listenPort, err := net.Listen("tcp", os.Getenv(pigeon_const.ServerPortEnvName))
 	if err != nil {
 		return err
@@ -40,9 +39,7 @@ func (s *Server) Start(ctx context.Context) error {
 		cancel()
 	}()
 	<-ctx.Done()
-	// shutdown
-	// 1.通知 (Message & Event)
-	// 2.graceful
+	gsrv.GracefulStop()
 
 	return nil
 }

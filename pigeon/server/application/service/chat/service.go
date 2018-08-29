@@ -26,14 +26,14 @@ type Service struct {
 	salt              string
 }
 
-func NewService(chatStream chan pb.ChatResponse, salt string) *Service {
+func NewService(ctx context.Context, chatStream chan pb.ChatResponse, salt string) *Service {
 	s := &Service{
 		postOffice:    chatStream,
 		posts:         make(map[string]chan pb.ChatResponse),
 		loginSessions: map[string]string{},
 		salt:          salt,
 	}
-	go s.bootPostOfficeProcess()
+	go s.bootPostOfficeProcess(ctx)
 	return s
 }
 
@@ -43,24 +43,32 @@ func (s *Service) RegisterPost(id string) {
 	s.chatResponseMutex.Unlock()
 }
 
-func (s *Service) bootPostmanProcess(id string, server pb.ChatService_ChatteringServer) {
+func (s *Service) bootPostmanProcess(ctx context.Context, id string, server pb.ChatService_ChatteringServer) {
 	for {
-		res := <-s.posts[id]
-		log.Printf("send message user:%s body:%s", id, res.Body)
-		if err := server.Send(&res); err != nil {
-			log.Printf("error:%#v \n", err)
+		select {
+		case res := <-s.posts[id]:
+			log.Printf("send message user:%s body:%s \n", id, res.Body)
+			if err := server.Send(&res); err != nil {
+				log.Printf("error:%#v \n", err)
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
-func (s *Service) bootPostOfficeProcess() {
+func (s *Service) bootPostOfficeProcess(ctx context.Context) {
 	for {
-		res := <-s.postOffice
-		s.chatResponseMutex.RLock()
-		for _, post := range s.posts {
-			post <- res
+		select {
+		case res := <-s.postOffice:
+			s.chatResponseMutex.RLock()
+			for _, post := range s.posts {
+				post <- res
+			}
+			s.chatResponseMutex.RUnlock()
+		case <-ctx.Done():
+			return
 		}
-		s.chatResponseMutex.RUnlock()
 	}
 }
 
@@ -100,7 +108,8 @@ func (s *Service) SignOut(ctx context.Context, in *pb.SignOutRequest) (*pb.SignO
 }
 
 func (s *Service) Chattering(server pb.ChatService_ChatteringServer) error {
-	token, err := s.getAuthTokenFromCtx(server.Context())
+	ctx *= server.Context()
+	token, err := s.getAuthTokenFromCtx(ctx)
 	if err != nil {
 		return err
 	}
@@ -109,7 +118,7 @@ func (s *Service) Chattering(server pb.ChatService_ChatteringServer) error {
 		return err
 	}
 	s.RegisterPost(token)
-	go s.bootPostmanProcess(token, server)
+	go s.bootPostmanProcess(ctx, token, server)
 	for {
 		in, err := server.Recv()
 		if err == io.EOF {
